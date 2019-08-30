@@ -6,12 +6,17 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
+
+	util "./util"
 )
 
 var srcURL = "https://raw.githubusercontent.com/jpdillingham/slack-desktop-dark-theme/master/loader.js"
 var space = func() { fmt.Println() }
+var sep = os.PathSeparator
 
 func main() {
 	// parse args
@@ -40,8 +45,29 @@ func main() {
 		fmt.Printf("%d) %s\n", i, f)
 	}
 
-	fmt.Printf("\nPlease select the version to patch: ")
+	space()
 
+	// prompt user to select the target installation and assume they will enter something valid
+	selectedVersionInput := util.PromptForInput("Please select the version to patch: ")
+	selectedVersionIndex, _ := strconv.Atoi(selectedVersionInput)
+	selectedVersion := installedVersions[selectedVersionIndex]
+
+	space()
+
+	// construct the path to the target file and validate that it exists
+	appAsar := filepath.FromSlash(fmt.Sprintf("%s/%s/resources/app.asar", path, selectedVersion))
+
+	fmt.Printf("Locating patch target file %s...", appAsar)
+
+	if _, err := os.Stat(appAsar); os.IsNotExist(err) {
+		panic(fmt.Sprintf("Unpatchable Slack installation.  Slack may have changed things, or your install is broken."))
+	}
+
+	fmt.Print(" done.\n")
+
+	space()
+
+	// fetch the code to use for the patch
 	if *srcURLInputPtr != "" {
 		srcURL = *srcURLInputPtr
 		fmt.Print(fmt.Sprintf("Fetching source from %s...", srcURL))
@@ -51,7 +77,27 @@ func main() {
 
 	getPatchSrc(srcURL)
 
-	fmt.Print(" done.")
+	fmt.Print(" done.\n")
+
+	space()
+
+	// extract the file
+	fmt.Printf("Extracting target archive...")
+
+	// locate .\dist\ssb-interop.bundle.js
+
+	// read the final line in the file and check whether it matches '//# sourceMappingURL=ssb-interop.bundle.js.map'
+	// if so, the file has already been patched.  bail out after deleting the extracted files.
+
+	// append the fetched patch code to the file
+
+	// create a new archive
+
+	// rename the old file
+
+	// rename the new archive to the old filename
+
+	// done!
 }
 
 func getSlackDir() (path string) {
@@ -86,10 +132,10 @@ func getInstalledSlackVersions(path string) (versions []string) {
 	return installedVersions
 }
 
-func getPatchSrc(srcUrl string) (src string) {
-	resp, err := http.Get(srcUrl)
+func getPatchSrc(srcURL string) (src string) {
+	resp, err := http.Get(srcURL)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Failed to fetch url %s: %s", srcURL, err.Error))
 	}
 
 	defer resp.Body.Close()
