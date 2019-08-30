@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strconv"
 
+	"layeh.com/asar"
+
 	util "./util"
 )
 
@@ -84,6 +86,8 @@ func main() {
 	// extract the file
 	fmt.Printf("Extracting target archive...")
 
+	extractAsarFile(appAsar)
+
 	// locate .\dist\ssb-interop.bundle.js
 
 	// read the final line in the file and check whether it matches '//# sourceMappingURL=ssb-interop.bundle.js.map'
@@ -127,6 +131,7 @@ func getInstalledSlackVersions(path string) (versions []string) {
 		if f.IsDir() && isAppDir {
 			installedVersions = append(installedVersions, f.Name())
 		}
+
 	}
 
 	return installedVersions
@@ -135,7 +140,7 @@ func getInstalledSlackVersions(path string) (versions []string) {
 func getPatchSrc(srcURL string) (src string) {
 	resp, err := http.Get(srcURL)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to fetch url %s: %s", srcURL, err.Error))
+		panic(fmt.Sprintf("Failed to fetch url %s: %s", srcURL, err.Error()))
 	}
 
 	defer resp.Body.Close()
@@ -146,4 +151,23 @@ func getPatchSrc(srcURL string) (src string) {
 	}
 
 	return string(body)
+}
+
+func extractAsarFile(filename string) {
+	f, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	archive, err := asar.Decode(f)
+	if err != nil {
+		panic(err)
+	}
+
+	target := archive.Find("dist", "ssb-interop.bundle.js")
+	if target == nil {
+		panic("File not found")
+	}
 }
