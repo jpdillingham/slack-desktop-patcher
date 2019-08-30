@@ -6,12 +6,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
-
-	"layeh.com/asar"
 
 	util "./util"
 )
@@ -154,20 +153,35 @@ func getPatchSrc(srcURL string) (src string) {
 }
 
 func extractAsarFile(filename string) {
-	f, err := os.Open(filename)
+	// create a temp dir
+	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
 	}
 
-	defer f.Close()
+	fmt.Printf("\nUsing temp dir %s\n", dir)
 
-	archive, err := asar.Decode(f)
+	//defer os.RemoveAll(dir)
+
+	cmdText := fmt.Sprintf("asar extract %s %s", filename, dir)
+	//cmdText = strings.Replace(cmdText, "\\\\", "\\", -1)
+	fmt.Printf("\nCommand: %s", cmdText)
+	cmd := exec.Command("asar", filename, dir)
+	err = cmd.Run()
 	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		panic(err)
 	}
 
-	target := archive.Find("dist", "ssb-interop.bundle.js")
-	if target == nil {
-		panic("File not found")
+	fmt.Println("Trying to list files...")
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic("error listing files in Slack directory.  Try again with escalated privileges?")
 	}
+
+	for _, f := range files {
+		fmt.Println(f.Name())
+	}
+
+	fmt.Println("done?!")
 }
